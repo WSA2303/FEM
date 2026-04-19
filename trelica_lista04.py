@@ -6,8 +6,6 @@ from pathlib import Path
 # TRELIÇA PLANA 2D - MÉTODO DOS ELEMENTOS FINITOS
 # ============================================================
 
-ESCALA = 300  # fator de escala para visualização da deformada
-
 # Graus de liberdade por nó
 GLX = 0
 GLY = 1
@@ -201,6 +199,42 @@ U = np.linalg.solve(KG, FG)   # deslocamentos [m]
 U_MM = U * 1e3                # deslocamentos [mm]
 
 # ============================================================
+# FATOR DE AMPLIAÇÃO AUTOMÁTICO DA DEFORMADA
+# ============================================================
+
+# dimensões características da estrutura
+xmin = np.min(COORD[:, 0])
+xmax = np.max(COORD[:, 0])
+ymin = np.min(COORD[:, 1])
+ymax = np.max(COORD[:, 1])
+
+LX = xmax - xmin
+LY = ymax - ymin
+
+# comprimento de referência da estrutura
+LREF = max(LX, LY)
+
+# deslocamento resultante em cada nó
+U_NODAL = np.zeros(NNOS)
+for no in range(NNOS):
+    ux = U[NGLN * no]
+    uy = U[NGLN * no + 1]
+    U_NODAL[no] = np.sqrt(ux**2 + uy**2)
+
+UMAX = np.max(U_NODAL)
+
+# percentual do tamanho da estrutura que a deformada deve ocupar visualmente
+FRACAO_VISUAL = 0.15  # 15% do tamanho da estrutura
+
+# evita divisão por zero
+if UMAX > 1e-14:
+    ESCALA = FRACAO_VISUAL * LREF / UMAX
+else:
+    ESCALA = 1.0
+
+print(f"\nFator de ampliação automático da deformada: {ESCALA:.3f}")
+
+# ============================================================
 # REAÇÕES DE APOIO
 # ============================================================
 R = KG_ORIG @ U - FG_ORIG
@@ -381,5 +415,5 @@ for e in range(NEL):
     plt.plot(xdef, ydef, linewidth=1)
     plt.plot(xdef, ydef, 'o')
 
-plt.title("Treliça original e deformada")
+plt.title(f"Treliça original e deformada (escala automática = {ESCALA:.2f})")
 plt.show()
